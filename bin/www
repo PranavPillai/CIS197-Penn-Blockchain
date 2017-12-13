@@ -54,7 +54,7 @@ io.on('connection', function(socket) {
       post.save(function(err) {
       });
     });
-    socket.emit('new-q', {poster: data.username, question: data.question,
+    io.emit('new-q', {poster: data.username, question: data.question,
       summary: data.summary, folder: data.folder});
   });
   socket.on('get_questions', function() {
@@ -82,7 +82,7 @@ io.on('connection', function(socket) {
         console.log('Email sent: ' + info.response);
       }
     });
-      socket.emit('new-answer', {question: data.question, answer: answer, div: data.div});
+      io.emit('new-answer', {question: data.question, answer: answer, div: data.div});
     });
   });
 });
