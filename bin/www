@@ -1,0 +1,148 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var Post = require('../models/PostDB').Post;
+var User = require('../models/UserDB').User;
+var Assignment = require('../models/AssignmentsDB').Assignment;
+var app = require('../app');
+var debug = require('debug')('penn-blockchain:server');
+var http = require('http');
+var nodemailer = require('nodemailer');
+
+var transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'cis197pranav@gmail.com',
+    pass: 'heypassword'
+  }
+});
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+server.listen(port);
+var io = require('socket.io')(server);
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.on('error', onError);
+server.on('listening', onListening);
+
+io.on('connection', function(socket) {
+  socket.emit('connection', '');
+  socket.on('add-question', function(data) {
+    User.find({username: data.username}, function(err, user) {
+      var name = data.username;
+      var post = new Post({poster: name, question: data.question,
+      summary: data.summary, folder: data.folder});
+      user[0].posts.push(post._id);
+      user[0].save(function(err) {
+      });
+      post.save(function(err) {
+      });
+    });
+    socket.emit('new-q', {poster: data.username, question: data.question,
+      summary: data.summary, folder: data.folder});
+  });
+  socket.on('get_questions', function() {
+    Post.find({}, function(err, users) {
+      socket.emit('current_questions', users);
+    });
+  });
+  socket.on('add-answer', function(data) {
+    Post.find({question: data.question}, function(err, posts) {
+      var answer = data.username + ": " + data.answer
+      posts[0].answers.push(answer);
+      posts[0].save(function(err){});
+
+    var mailOptions = {from: 'cis197pranav@gmail.com',
+      to: posts[0].poster,
+      subject: 'Your Post on Penn Blockchain',
+      text: 'You asked the question : ' + data.question + ' and the answer was: ' + data.answer
+      
+    };
+
+    transporter.sendMail(mailOptions, function(error, info){
+      if (error) {
+        console.log(error);
+      } else {
+        console.log('Email sent: ' + info.response);
+      }
+    });
+      socket.emit('new-answer', {question: data.question, answer: answer, div: data.div});
+    });
+  });
+});
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}

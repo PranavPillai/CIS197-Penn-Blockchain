@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type='text/javascript' src='https://ajax.microsoft.com/ajax/jQuery/jquery-1.4.2.min.js'></script>
+
+    <script src='/socket.io/socket.io.js'></script>
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <script>
+    var currUser = "<%=username%>";
+    var currClass;
+    $(document).ready(function() {
+
+      $('#footer').click(function(e) {
+        e.preventDefault();
+        window.open('mailto:cis197pranav@gmail.com?subject=Penn-Blockchain');
+      });
+      var j = 1;
+      var respond = function() {
+      }
+      $('.panel-group').on('submit', '.answer', function(e) {
+        e.preventDefault();
+        var question = $(this).closest('.panel')[0];
+        var textDiv = $(question).find('.panel-body')[0];
+        var text = $(textDiv).text();
+        var answerDiv = $(this).find('.form-control')[0];
+        var answer = $(answerDiv).val();
+        $(answerDiv).val('');
+        var divNum = $(this).siblings('.hidden')[0];
+        var div = $(divNum).text();
+        socket.emit('add-answer', {answer: answer, question: text, username: currUser, div: div});
+      });
+
+      var makeQuestion = function(data, bool, int) {
+        var show;
+        if(bool) {
+          show = 'showQ';
+        } else {
+          show = 'hideQ';
+        }
+        var html =
+        '<div class="panel post panel-default '+ show +' '+data.folder+'">' +
+          '<div class="panel-heading">' +
+          '  <h4 class="panel-title">' +
+              '<a class = "summary" data-toggle="collapse" data-parent="#accordion" href="#collapse' + j + '">' +
+              data.summary + "</a>" +
+            "</h4>" +
+          '</div>' +
+          '<div id="collapse' + j + '" class="panel-collapse collapse questionText">' +
+            "<div class='panel-body'>" + data.question + "</div>" +
+          '<div class="col-lg-12">' + 
+            '<div class="col-lg-3"></div>' + 
+            '<div class="line col-lg-6"></div>' + 
+            '<div class="col-lg-3"></div>' + 
+          '</div>' + 
+          '<div class="col-lg-12 answer" id="ans'+int+'">' + 
+          '</div>' + 
+            '<div>' + 
+            '<div class="hidden"> ' + int + '</div>' + 
+              '<form class="answer">' + 
+                '<div class="input-group">' + 
+                  '<input type="text" class="form-control" placeholder="Answer: ">' + 
+                  '<div class="input-group-btn">' + 
+                    '<button class="btn btn-default" type="submit">' + 
+                      '<i class="">Answer</i>' + 
+                    '</button>' + 
+                  '</div>' + 
+                '</div>' + 
+              '</form>' + 
+            '</div>' + 
+            '</div>' + 
+          "</div>" +
+          "<div>" +
+          "</div>" +
+        '</div>';
+      return html;
+      }
+      var socket = io('http://localhost:3000');
+     
+      $('#add-q').submit(function(e) {
+        e.preventDefault();
+        var summary = $('#q-summary').val();
+        var question = $('#q-text').val();
+        var username = '<%=username%>';
+        var folder = $('#folder').val();
+        document.getElementById('id03').style.display='none';
+        socket.emit('add-question', {summary: summary, question: question, username: username, folder: folder});
+      });
+
+      socket.on('new-q', function(data) {
+        var bool = false;
+        if(currClass == data.folder) {
+          bool = true;
+        }
+        var html = makeQuestion(data, bool, j);
+        $('#accordion').prepend(html);
+      });
+      
+      socket.on('connection', function(data) {
+        var counter = 0;
+        socket.emit('get_questions', 'please');
+      });
+
+      socket.on('new-answer', function(data) {
+        var htmlAns2 = makeAnswer(data.answer);
+        var splitdiv = data.div.split(' ');
+        var div = splitdiv[1];
+        var ansID2 = "#ans" + div;
+        $(ansID2).append(htmlAns2);
+      });
+
+      socket.on('current_questions', function(data) {
+        for(var i = 0; i < data.length; i++) {
+          var html = makeQuestion(data[i], false, j);
+          $('#accordion').prepend(html);
+          var numAns = data[i].answers.length;
+          for(var a = 0; a < numAns; a++) {
+            var ansID = "#ans" + j;
+            var htmlAns = makeAnswer(data[i].answers[a]);
+            $(ansID).append(htmlAns);
+          }
+          j++;
+        }
+      });
+
+      var makeAnswer = function(answer) {
+        var html = '<div><p>'+answer+'</p></div>';
+        return html;
+      }
+
+    });
+
+    var chooseAssignment = function(x) {
+      currClass = x.id;
+      $('.list-group-item').removeClass('active');
+      $(x).addClass('active');
+      $('.post').removeClass('showQ');
+      $('.post').addClass('hideQ');
+      var folderClass = '.' + x.id;
+      $(folderClass).addClass('showQ');
+    }
+    </script>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/bootstrap.css' />
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link rel='stylesheet' href='/stylesheets/signup.css'/>
+    <link rel='stylesheet' href='/stylesheets/addpost.css'/>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'>
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+    <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js'></script>
+
+<!-- Latest compiled and minified JavaScript -->
+  </head>
+  <body>
+    <div class="pad-bottom">
+      <nav class='navbar navbar-fixed-top navbar-inverse bg-inverse'>
+        <div class="container-fluid">
+          <div class="navbar-header">
+            <a class="navbar-brand" href="/"><img class="logo" src="../images/penn-blockchain.png"/></a>
+          </div>
+          <ul class="nav navbar-nav navbar-right">
+            <%if (!login) {%>
+            <li><button onclick="document.getElementById('id01').style.display='block'">Sign Up</button></li>
+            <li><button onclick="document.getElementById('id02').style.display='block'">Login</button></li>
+            <%} else {%>
+            <li><form action="/logout" method="get"><button type="submit">Logout</button></form></li>
+            <%}%>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="/assignments">Assignments</a></li>
+            <li class="active"><a href="/forum">Forum</a></li>
+            <li><a href="/chart">Charts</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+    <div class="container-fluid">
+      <div class="col-lg-4">
+        <button onclick="document.getElementById('id03').style.display='block'">Post a Question</button>
+        <div class="list-group">
+          <a class="list-group-item" id="folder1" onclick="chooseAssignment(folder1);">
+            <h4 class="list-group-item-heading">Assignment 1</h4>
+          </a>
+          <a class="list-group-item" id="folder2" onclick="chooseAssignment(folder2);">
+            <h4 class="list-group-item-heading">Assignment 2</h4>
+          </a>
+          <a class="list-group-item" id="folder3" onclick="chooseAssignment(folder3);">
+            <h4 class="list-group-item-heading">Assignment 3</h4>
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div class="panel-group col-lg-12" id="accordion" style="position: absolute; top: 100; left: 100;">
+        </div>
+      </div>
+    </div>
+    <!-- Button to open the modal -->
+<!-- The Modal (contains the Sign Up form) -->
+    <div id="id01" class="modal">
+      <span onclick="document.getElementById('id01').style.display='none'" class="close" title="Close Modal">&times;</span>
+      <form class="modal-content animate" action="/signup" method="post">
+        <div class="container">
+          <label><b>Email</b></label>
+          <input type="text" placeholder="Enter Email" name="email" required>
+
+          <label><b>Password</b></label>
+          <input type="password" placeholder="Enter Password" name="psw" required>
+
+          <label><b>Repeat Password</b></label>
+          <input type="password" placeholder="Repeat Password" name="psw-repeat" required>
+          <input type="checkbox" checked="checked"> Remember me
+          <p>By creating an account you agree to our <a href="#">Terms & Privacy</a>.</p>
+
+          <div class="clearfix">
+            <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Cancel</button>
+            <button type="submit" class="signupbtn">Sign Up</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <!-- The Modal -->
+    <div id="id02" class="modal">
+      <span onclick="document.getElementById('id02').style.display='none'"
+    class="close2" title="Close Modal">&times;</span>
+
+      <!-- Modal Content -->
+      <form class="modal-content2 animate" action="/login" method="post">
+        <!-- <div class="imgcontainer">
+          <img src="img_avatar2.png" alt="Avatar" class="avatar">
+        </div> -->
+
+        <div class="container2">
+          <label><b>Username</b></label>
+          <input type="text" placeholder="Enter Username" name="uname" required>
+
+          <label><b>Password</b></label>
+          <input type="password" placeholder="Enter Password" name="psw2" required>
+
+          <button type="submit">Login</button>
+          <button type="button" onclick="document.getElementById('id02').style.display='none'" class="cancelbtn">Cancel</button>
+          <span class="psw2">Forgot <a href="#">password?</a></span>
+        </div>
+      </form>
+    </div>
+
+    <div id="id03" class="modal">
+      <span onclick="document.getElementById('id03').style.display='none'" class="close" title="Close Modal">&times;</span>
+      <form class="modal-content3 animate" id="add-q">
+        <div class="container">
+          <div>
+            <label><b>Assignment: </b></label>
+            <select class="selectpicker" id="folder">
+            <option value="folder1">Assignment1</option>
+            <option value="folder2">Assignment2</option>
+            <option value="folder3">Assignment3</option>
+          </select>
+          </div>
+          <label><b>Summary of Your Question</b></label>
+          <input type="text" placeholder="Summary" name="summary" id="q-summary" required>
+          <label><b>Question</b></label>
+          <textarea rows="4" with = "75%" placeholder="Enter Your Question" id="q-text" name="question" required></textarea>
+          <div class="clearfix">
+            <button type="button" onclick="document.getElementById('id03').style.display='none'" class="cancelbtn">Cancel</button>
+            <button type="submit" id="addQ" class="btn btn-primary">Post Your Question</button>
+          </div>
+        </div>
+      </form>
+    </div>
+      <script>
+      $(document).ready(function() {
+          var panels = $('.vote-results');
+          var panelsButton = $('.dropdown-results');
+          panels.hide();
+
+          //Click dropdown
+          panelsButton.click(function() {
+              //get data-for attribute
+              var dataFor = $(this).attr('data-for');
+              var idFor = $(dataFor);
+
+              //current button
+              var currentButton = $(this);
+              idFor.slideToggle(400, function() {
+                  //Completed slidetoggle
+                  if(idFor.is(':visible'))
+                  {
+                      currentButton.html('Hide Results');
+                  }
+                  else
+                  {
+                      currentButton.html('View Results');
+                  }
+              })
+          });
+      });
+    </script>
+        <script>
+      var modal = document.getElementById('id01');
+      window.onclick = function(event) {
+          if (event.target == modal) {
+              modal.style.display = "none";
+          }
+      }
+      // Get the modal
+      var modal2 = document.getElementById('id02');
+
+      // When the user clicks anywhere outside of the modal, close it
+      window.onclick = function(event) {
+          if (event.target == modal2) {
+              modal2.style.display = "none";
+          }
+      }
+    </script>
+<div class="footer">
+  <a id="footer">Contact Us!</a>
+</div>
+  </body>
+</html>
